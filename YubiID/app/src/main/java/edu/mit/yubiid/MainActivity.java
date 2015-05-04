@@ -1,9 +1,9 @@
 package edu.mit.yubiid;
 
-import android.nfc.NfcAdapter;
-import android.nfc.Tag;
-import android.nfc.tech.IsoDep;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -12,26 +12,41 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.TextView;
+
+import org.jsoup.Connection;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class MainActivity extends ActionBarActivity {
+
+    private static final String NEO_STORE = "NEO_STORE";
+    private static final String YUBICO = "https://my.yubico.com/neo/";
+    private static final String TAG = "MainActivity";
+
+    private static MainActivity context;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_main);
+        context = this;
         /*if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .add(R.id.container, new PlaceholderFragment())
                     .commit();
         }*/
+
         if(getIntent() != null) {
-            Tag tag = getIntent().getParcelableExtra(NfcAdapter.EXTRA_TAG);
-            Log.i(TAG, Arrays.toString(tag.getTechList()));
-            transTag(tag, "hello world");
+            Log.i(TAG, getIntent().getDataString());
+            ((EditText) findViewById(R.id.message)).setText(getIntent().getDataString().replace(YUBICO,""));
         }
     }
 
@@ -75,26 +90,46 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void sendMessage(View v) {
+        new AsyncTask <Object, Object, Object>() {
 
-    }
+            private static final String TAG = "MainActivity";
 
-    private static final String TAG = "MainActivity";
+            @Override
+            protected Object doInBackground(Object...arg) {
+                try {
+                    Connection con = Jsoup.connect(YUBICO+((EditText) findViewById(R.id.message)).getText());
 
-    public void transTag(Tag tag, String tagText) {
-        IsoDep isoDep = IsoDep.get(tag);
-        try {
-            isoDep.connect();
-            byte[] response = isoDep.transceive(tagText.getBytes());
-            Log.i(TAG,new String(response));
-        } catch (IOException e) {
-            Log.e(TAG, "IOException while closing MifareClassic...", e);
-        } finally {
-            try {
-                isoDep.close();
-            } catch (IOException e) {
-                Log.e(TAG, "IOException while closing MifareClassic...", e);
+                    Document doc = con.get();
+                    Elements info = doc.select("#info");
+                    Log.i(TAG,info.text());
+                    Message msg = new Message();
+                    msg.obj = info.text();
+                    contextHandler.sendMessage(msg);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
             }
-        }
+        }.execute(null, null, null);
     }
+
+    private static Handler contextHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+
+            String pattern = "status=OK";
+
+            // Create a Pattern object
+            Pattern r = Pattern.compile(pattern);
+
+            // Now create matcher object.
+            Matcher m = r.matcher((String) msg.obj);
+            if (m.find( ))
+                ((TextView) context.findViewById(R.id.response)).setText("VALID CODE");
+            else
+                ((TextView) context.findViewById(R.id.response)).setText("INVALID CODE");
+        }
+    };
 
 }
