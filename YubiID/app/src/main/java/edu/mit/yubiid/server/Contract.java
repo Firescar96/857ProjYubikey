@@ -1,4 +1,4 @@
-package server;
+package edu.mit.yubiid.server;
 
 import android.provider.BaseColumns;
 

@@ -1,5 +1,7 @@
 package edu.mit.yubiid;
 
+import android.content.ContentValues;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -20,12 +22,12 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
-import server.Contract.Exchanges;
-import server.ExchangesDbHelper;
-
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import edu.mit.yubiid.server.Contract.Exchanges;
+import edu.mit.yubiid.server.ExchangesDbHelper;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -34,7 +36,7 @@ public class MainActivity extends ActionBarActivity {
     private static final String YUBICO = "https://my.yubico.com/neo/";
     private static final String TAG = "MainActivity";
 
-    private ExchangesDbHelper dbHelper = new ExchangesDbHelper(getContext()); 
+    private ExchangesDbHelper dbHelper = new ExchangesDbHelper(this);
     private SQLiteDatabase db = dbHelper.getReadableDatabase();
     
     private static MainActivity context;
@@ -138,29 +140,25 @@ public class MainActivity extends ActionBarActivity {
         }
     };
     
-   private static void sendMoney(String senderyubikey, String publicyubikey, int amount) {
-	   Content values = new ContentValues();
+   private void sendMoney(String senderyubikey, String publicyubikey, int amount) {
+	   ContentValues values = new ContentValues();
 
 	   values.put(Exchanges.COLUMN_NAME_SENDER_YUBIKEY, senderyubikey);
 	   values.put(Exchanges.COLUMN_NAME_PUBLIC_YUBIKEY, publicyubikey);
 	   values.put(Exchanges.COLUMN_NAME_AMOUNT, amount);
 	   
-	   int count = db.update(
-			   ExchangesDbHelper.Exchanges.TABLE_NAME,
-			   values);
+	   int count = db.update(Exchanges.TABLE_NAME,values,null,null);
 			   
    }
    
-   private static void receiveMoney(String senderyubikey, String publicyubikey, int amount) {
-	   Content values = new ContentValues();
+   private  void receiveMoney(String senderyubikey, String publicyubikey, int amount) {
+	   ContentValues values = new ContentValues();
 
 	   values.put(Exchanges.COLUMN_NAME_SENDER_YUBIKEY, senderyubikey);
 	   values.put(Exchanges.COLUMN_NAME_PUBLIC_YUBIKEY, publicyubikey);
 	   values.put(Exchanges.COLUMN_NAME_AMOUNT, amount);
 	   
-	   int count = db.update(
-			   ExchangesDbHelper.Exchanges.TABLE_NAME,
-			   values);
+	   int count = db.update(Exchanges.TABLE_NAME,values,null,null);
 			   
    }
 

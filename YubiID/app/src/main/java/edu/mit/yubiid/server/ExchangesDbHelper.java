@@ -1,9 +1,10 @@
-package server;
+package edu.mit.yubiid.server;
 
-import server.Contract.Exchanges;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+
+import edu.mit.yubiid.server.Contract.Exchanges;
 
 public class ExchangesDbHelper extends SQLiteOpenHelper {
 
