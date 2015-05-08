@@ -20,6 +20,9 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
+import server.Contract.Exchanges;
+import server.ExchangesDbHelper;
+
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,6 +34,9 @@ public class MainActivity extends ActionBarActivity {
     private static final String YUBICO = "https://my.yubico.com/neo/";
     private static final String TAG = "MainActivity";
 
+    private ExchangesDbHelper dbHelper = new ExchangesDbHelper(getContext()); 
+    private SQLiteDatabase db = dbHelper.getReadableDatabase();
+    
     private static MainActivity context;
 
     @Override
@@ -131,5 +137,31 @@ public class MainActivity extends ActionBarActivity {
                 ((TextView) context.findViewById(R.id.response)).setText("INVALID CODE");
         }
     };
+    
+   private static void sendMoney(String senderyubikey, String publicyubikey, int amount) {
+	   Content values = new ContentValues();
+
+	   values.put(Exchanges.COLUMN_NAME_SENDER_YUBIKEY, senderyubikey);
+	   values.put(Exchanges.COLUMN_NAME_PUBLIC_YUBIKEY, publicyubikey);
+	   values.put(Exchanges.COLUMN_NAME_AMOUNT, amount);
+	   
+	   int count = db.update(
+			   ExchangesDbHelper.Exchanges.TABLE_NAME,
+			   values);
+			   
+   }
+   
+   private static void receiveMoney(String senderyubikey, String publicyubikey, int amount) {
+	   Content values = new ContentValues();
+
+	   values.put(Exchanges.COLUMN_NAME_SENDER_YUBIKEY, senderyubikey);
+	   values.put(Exchanges.COLUMN_NAME_PUBLIC_YUBIKEY, publicyubikey);
+	   values.put(Exchanges.COLUMN_NAME_AMOUNT, amount);
+	   
+	   int count = db.update(
+			   ExchangesDbHelper.Exchanges.TABLE_NAME,
+			   values);
+			   
+   }
 
 }
