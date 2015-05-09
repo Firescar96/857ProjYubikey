@@ -13,6 +13,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Parcelable;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -130,6 +131,31 @@ public class MainActivity extends ActionBarActivity {
     private void handleIntent(Intent intent) {
         if(getIntent().getDataString() != null)
             Log.i(TAG, getIntent().getDataString());
+        else if(getIntent().getExtras() != null) {
+            Parcelable[] messages = (Parcelable[]) getIntent().getExtras().get("android.nfc.extra.NDEF_MESSAGES");
+            NdefRecord record= ((NdefMessage) messages[0]).getRecords()[0];
+            try {
+                state = PUB_KEY;
+                byte[] payload = record.getPayload();
+
+                // Get the Text Encoding
+                String utf8 = "UTF-8";
+                String utf16 = "UTF-16";
+                String textEncoding = ((payload[0] & 128) == 0) ? utf8 : utf16;
+
+                // Get the Language Code
+                int languageCodeLength = payload[0] & 0063;
+
+                // String languageCode = new String(payload, 1, languageCodeLength, "US-ASCII");
+                // e.g. "en"
+
+                // Get the Text
+                postKeyExecute(new String(payload, languageCodeLength + 1, payload.length - languageCodeLength - 1, textEncoding));
+                return;
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+        }
         else
             Log.i(TAG,getIntent().toString());
         /*if(getIntent() != null) {
@@ -143,6 +169,7 @@ public class MainActivity extends ActionBarActivity {
             String type = intent.getType();
             if (MIME_TEXT_PLAIN.equals(type)) {
 
+                Log.i(TAG,"Executing Task");
                 Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
                 new NdefReaderTask().execute(tag);
 
@@ -203,7 +230,7 @@ public class MainActivity extends ActionBarActivity {
                 }
             }
 
-            return null;
+            return "";
         }
 
         private String readText(NdefRecord record) throws UnsupportedEncodingException {
@@ -236,15 +263,19 @@ public class MainActivity extends ActionBarActivity {
 
         @Override
         protected void onPostExecute(String result) {
-            if (result != null) {
-                if(state == PUB_KEY) {
-                    pubAddress = result.split(":")[PUB_KEY];
-                    ((EditText) findViewById(R.id.addresss)).setText(pubAddress);
-                }
-                if(state == OTP) {
-                    otp = result.split(":")[OTP];
-                    ((EditText) findViewById(R.id.addresss)).setText(otp);
-                }
+            postKeyExecute(result);
+        }
+    }
+
+    public void postKeyExecute(String result) {
+        if (result != null) {
+            if(state == PUB_KEY) {
+                pubAddress = result.split(":")[PUB_KEY];
+                ((EditText) findViewById(R.id.addresss)).setText(pubAddress);
+            }
+            if(state == OTP) {
+                otp = result.split(":")[OTP];
+                ((EditText) findViewById(R.id.verification)).setText(otp);
             }
         }
     }
