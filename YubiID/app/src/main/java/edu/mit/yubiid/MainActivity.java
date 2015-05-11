@@ -12,8 +12,8 @@ import android.nfc.tech.Ndef;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
-import android.os.Parcelable;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -25,12 +25,17 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import org.jsoup.Connection;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.HttpConnectionParams;
+import org.apache.http.params.HttpParams;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.regex.Matcher;
@@ -129,7 +134,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private void handleIntent(Intent intent) {
-        if(getIntent().getDataString() != null)
+        /*if(getIntent().getDataString() != null)
             Log.i(TAG, getIntent().getDataString());
         else if(getIntent().getExtras() != null) {
             Parcelable[] messages = (Parcelable[]) getIntent().getExtras().get("android.nfc.extra.NDEF_MESSAGES");
@@ -150,6 +155,7 @@ public class MainActivity extends ActionBarActivity {
                 // e.g. "en"
 
                 // Get the Text
+                Log.i(TAG, "payload"+new String(payload, languageCodeLength + 1, payload.length - languageCodeLength - 1, textEncoding));
                 postKeyExecute(new String(payload, languageCodeLength + 1, payload.length - languageCodeLength - 1, textEncoding));
                 return;
             } catch (UnsupportedEncodingException e) {
@@ -157,7 +163,8 @@ public class MainActivity extends ActionBarActivity {
             }
         }
         else
-            Log.i(TAG,getIntent().toString());
+            Log.i(TAG,getIntent().toString());*/
+
         /*if(getIntent() != null) {
             String pubAddress = getIntent().getDataString().split(":")[1];
             String otp = getIntent().getDataString().split(":")[2];
@@ -268,6 +275,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void postKeyExecute(String result) {
+        Log.i(TAG,result+": "+state);
         if (result != null) {
             if(state == PUB_KEY) {
                 pubAddress = result.split(":")[PUB_KEY];
@@ -319,6 +327,95 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void sendMessage(View v) {
+        sendDataToBackend();
+    }
+
+    public void sendDataToBackend()
+    {
+        new AsyncTask<Object, Object, Object>() {
+            @Override
+            protected Object doInBackground(Object... arg0) {
+                if (Looper.myLooper() == null)
+                    Looper.prepare();
+                String msg = "";
+                InputStream inputStream = null;
+
+                try {
+
+                    // 1. create HttpClient
+                    HttpClient httpclient = new DefaultHttpClient();
+
+                    String amount = ((EditText) findViewById(R.id.amount)).getText().toString();
+                    pubAddress = ((EditText) findViewById(R.id.addresss)).getText().toString();
+                    otp = ((EditText) findViewById(R.id.verification)).getText().toString();
+
+                    // 2. make POST request to the given URL
+                    HttpGet httpGet = new HttpGet("http://macgregor.mit.edu:12345?amnt="+amount+"&pa="+pubAddress+"&otp="+otp);
+
+                    // 7. Set some headers to inform server about the type of the content
+                    httpGet.setHeader("Accept", "application/json");
+                    httpGet.setHeader("Content-type", "application/json");
+
+                    HttpParams httpParams = httpclient.getParams();
+                    HttpConnectionParams.setConnectionTimeout(httpParams, 5000);
+                    HttpConnectionParams.setSoTimeout(httpParams, 5000);
+                    httpGet.setParams(httpParams);
+
+                    // 8. Execute POST request to the given URL
+                    Log.i(TAG,"executing");
+                    HttpResponse httpResponse = httpclient.execute(httpGet);
+                    // 9. receive response as inputStream
+                    inputStream = httpResponse.getEntity().getContent();
+
+                    // 10. convert inputstream to string
+                    if(inputStream != null) {
+                        Message mess = new Message();
+                        mess.obj = convertInputStreamToString(inputStream);
+                        contextHandler.sendMessage(mess);
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return msg;
+            }
+        }.execute(null, null, null);
+    }
+
+    private static String convertInputStreamToString(InputStream inputStream) throws IOException {
+        BufferedReader bufferedReader = new BufferedReader( new InputStreamReader(inputStream));
+        String line = "";
+        String result = "";
+        while((line = bufferedReader.readLine()) != null)
+            result += line;
+
+        inputStream.close();
+        return result;
+
+    }
+
+    private static Handler contextHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+
+            String pattern = "status=OK";
+
+            // Create a Pattern object
+            Pattern r = Pattern.compile(pattern);
+
+            // Now create matcher object.
+            Matcher m = r.matcher((String) msg.obj);
+            if (m.find( ))
+                ((TextView) context.findViewById(R.id.response)).setText("VALID CODE");
+            else
+                ((TextView) context.findViewById(R.id.response)).setText("INVALID CODE");
+        }
+    };
+
+    //Previous Code for sending verification OTP to backend
+    /*
+    public void sendMessage(View v) {
         new AsyncTask <Object, Object, Object>() {
 
             private static final String TAG = "MainActivity";
@@ -359,13 +456,14 @@ public class MainActivity extends ActionBarActivity {
             else
                 ((TextView) context.findViewById(R.id.response)).setText("INVALID CODE");
         }
-    };
+    };*/
 
-    public void setMode(View v) {
-        if(v.getId() == R.id.addressMode)
+    public void setAddressMode(View v) {
             state = PUB_KEY;
-        else
-            state = OTP;
+    }
+
+    public void setVerificationMode(View v) {
+        state = OTP;
     }
     
    /* private void sendMoney(String senderyubikey, String publicyubikey, int amount) {
